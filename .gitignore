@@ -2,3 +2,5 @@
 config*.json
 *.zip
 .scannerwork
+.idea
+vendor

@@ -4,9 +4,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/bobertrublik/webhook-router/internal/config"
+	"github.com/bobertrublik/webhook-router/internal/daemon"
 	"github.com/sfomuseum/go-flags/flagset"
-	"github.com/whosonfirst/go-webhookd/v3/config"
-	"github.com/whosonfirst/go-webhookd/v3/daemon"
 	"log"
 	"os"
 )
