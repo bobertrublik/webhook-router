@@ -118,16 +118,16 @@ func (d *WebhookDaemon) AddWebhooksFromConfig(ctx context.Context, cfg *config.W
 			return fmt.Errorf("Missing dispatchers at offset %d", i+1)
 		}
 
-		receiver_uri, err := cfg.GetReceiverConfigByName(hook.Receiver)
+		recvUri, err := cfg.GetReceiverConfigByName(hook.Receiver)
 
 		if err != nil {
 			return fmt.Errorf("Failed to get receiver config for '%s', %w", hook.Receiver, err)
 		}
 
-		receiver, err := receiver.NewReceiver(ctx, receiver_uri)
+		recv, err := receiver.NewReceiver(ctx, recvUri)
 
 		if err != nil {
-			return fmt.Errorf("Failed to add receiver '%s', %w", receiver_uri, err)
+			return fmt.Errorf("Failed to add receiver '%s', %w", recvUri, err)
 		}
 
 		var steps []webhookd.WebhookTransformation
@@ -138,16 +138,16 @@ func (d *WebhookDaemon) AddWebhooksFromConfig(ctx context.Context, cfg *config.W
 				continue
 			}
 
-			transformation_uri, err := cfg.GetTransformationConfigByName(name)
+			transfUri, err := cfg.GetTransformationConfigByName(name)
 
 			if err != nil {
 				return fmt.Errorf("Failed to get transformation configuration for '%s', %w", name, err)
 			}
 
-			step, err := transformation.NewTransformation(ctx, transformation_uri)
+			step, err := transformation.NewTransformation(ctx, transfUri)
 
 			if err != nil {
-				return fmt.Errorf("Failed to create new transformation for '%s', %w", transformation_uri, err)
+				return fmt.Errorf("Failed to create new transformation for '%s', %w", transfUri, err)
 			}
 
 			steps = append(steps, step)
@@ -161,22 +161,22 @@ func (d *WebhookDaemon) AddWebhooksFromConfig(ctx context.Context, cfg *config.W
 				continue
 			}
 
-			dispatcher_uri, err := cfg.GetDispatcherConfigByName(name)
+			dispUri, err := cfg.GetDispatcherConfigByName(name)
 
 			if err != nil {
 				return fmt.Errorf("Failed to get dispatcher configuration for '%s', %w", name, err)
 			}
 
-			dispatcher, err := dispatcher.NewDispatcher(ctx, dispatcher_uri)
+			disp, err := dispatcher.NewDispatcher(ctx, dispUri)
 
 			if err != nil {
-				return fmt.Errorf("Failed to create dispatcher for '%s', %w", dispatcher_uri, err)
+				return fmt.Errorf("Failed to create dispatcher for '%s', %w", dispUri, err)
 			}
 
-			sendto = append(sendto, dispatcher)
+			sendto = append(sendto, disp)
 		}
 
-		wh, err := webhook.NewWebhook(ctx, hook.Endpoint, receiver, steps, sendto)
+		wh, err := webhook.NewWebhook(ctx, hook.Endpoint, recv, steps, sendto)
 
 		if err != nil {
 			return fmt.Errorf("Failed to create new webhook for '%s', %w", hook.Endpoint, err)
