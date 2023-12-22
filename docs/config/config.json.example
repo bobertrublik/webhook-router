@@ -1,8 +1,9 @@
 {
     "daemon": "http://localhost:8080",
     "receivers": {
-	"insecure": "insecure://"
-    },	
+	"insecure": "insecure://",
+	"secure": "secure://"
+    },
     "transformations": {
 	"null": "null://",
 	"chicken": "chicken://zxx",
@@ -14,9 +15,9 @@
     },
     "webhooks": [
 	{
-	    "endpoint": "/insecure-test",
-	    "receiver": "insecure",
-	    "transformations": [ "chicken" ],
+	    "endpoint": "/secure-test",
+	    "receiver": "secure",
+	    "transformations": [ "null" ],
 	    "dispatchers": [ "log" ]
 	}
     ]
