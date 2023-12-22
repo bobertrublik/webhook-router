@@ -2,7 +2,6 @@ package receiver
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -50,16 +49,6 @@ func (wh SecureReceiver) Receive(ctx context.Context, req *http.Request) ([]byte
 
 		err := &webhookd.WebhookError{Code: code, Message: message}
 		return nil, err
-	}
-
-	fmt.Printf("http request: %v", req)
-	authHeader := req.Header.Get("Authorization")
-	fmt.Printf("authoHeader: %v", authHeader)
-	if authHeader == "" {
-
-		code := http.StatusUnauthorized
-		message := "Authorization header missing"
-		return nil, &webhookd.WebhookError{Code: code, Message: message}
 	}
 
 	body, err := io.ReadAll(req.Body)

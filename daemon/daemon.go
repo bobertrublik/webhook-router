@@ -12,14 +12,14 @@ import (
 	"sync"
 	"time"
 
-	aa_log "github.com/aaronland/go-log/v2"	
 	"github.com/aaronland/go-http-server"
+	aa_log "github.com/aaronland/go-log/v2"
 	"github.com/whosonfirst/go-webhookd/v3"
 	"github.com/whosonfirst/go-webhookd/v3/config"
 	"github.com/whosonfirst/go-webhookd/v3/dispatcher"
 	"github.com/whosonfirst/go-webhookd/v3/receiver"
 	"github.com/whosonfirst/go-webhookd/v3/transformation"
-	"github.com/whosonfirst/go-webhookd/v3/webhook"	
+	"github.com/whosonfirst/go-webhookd/v3/webhook"
 )
 
 // type WebhookDaemon is a struct that implements a long-running daemon to listen for	and process webhooks.
@@ -205,11 +205,13 @@ func (d *WebhookDaemon) AddWebhook(ctx context.Context, wh webhook.Webhook) erro
 	return nil
 }
 
+/*
 // HandlerFunc() returns a `http.HandlerFunc` that handles HTTP (webhook) requests and response for 'd'.
 func (d *WebhookDaemon) HandlerFunc() (http.HandlerFunc, error) {
 	logger := log.Default()
 	return d.HandlerFuncWithLogger(logger)
 }
+*/
 
 // HandlerFuncWithLogger() returns a `http.HandlerFunc` that handles HTTP (webhook) requests and response for 'd'
 // logging events to 'logger'.
@@ -357,8 +359,8 @@ func (d *WebhookDaemon) HandlerFuncWithLogger(logger *log.Logger) (http.HandlerF
 		aa_log.Debug(logger, "Time to receive: %v", ttr)
 		aa_log.Debug(logger, "Time to transform: %v", ttt)
 		aa_log.Debug(logger, "Time to dispatch: %v", ttd)
-		aa_log.Debug(logger, "Time to process: %v", t2)		
-		
+		aa_log.Debug(logger, "Time to process: %v", t2)
+
 		rsp.Header().Set("X-Webhookd-Time-To-Receive", fmt.Sprintf("%v", ttr))
 		rsp.Header().Set("X-Webhookd-Time-To-Transform", fmt.Sprintf("%v", ttt))
 		rsp.Header().Set("X-Webhookd-Time-To-Dispatch", fmt.Sprintf("%v", ttd))
@@ -382,23 +384,34 @@ func (d *WebhookDaemon) HandlerFuncWithLogger(logger *log.Logger) (http.HandlerF
 	return http.HandlerFunc(handler), nil
 }
 
+func (d *WebhookDaemon) AuthorizationMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return // Ensure to return here to stop further processing
+		}
+
+		// Add your logic here to validate the authHeader
+
+		// Call the next handler if authorization is successful
+		next.ServeHTTP(w, r)
+	}
+}
+
 // Start() causes 'd' to listen for, and process, requests.
 func (d *WebhookDaemon) Start(ctx context.Context) error {
 	logger := log.Default()
-	return d.StartWithLogger(ctx, logger)
-}
-
-// StartWithLogger() causes 'd' to listen for, and process, requests logging events to 'logger'.
-func (d *WebhookDaemon) StartWithLogger(ctx context.Context, logger *log.Logger) error {
-
 	handler, err := d.HandlerFuncWithLogger(logger)
-
 	if err != nil {
 		return fmt.Errorf("Failed to create handler func, %w", err)
 	}
 
+	// Wrap the handler with the AuthorizationMiddleware
+	authorizedHandler := d.AuthorizationMiddleware(handler)
+
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", handler)
+	mux.HandleFunc("/", authorizedHandler)
 
 	svr := d.server
 
@@ -409,6 +422,5 @@ func (d *WebhookDaemon) StartWithLogger(ctx context.Context, logger *log.Logger)
 	if err != nil {
 		return fmt.Errorf("Failed to listen for requests, %w", err)
 	}
-
 	return nil
 }
