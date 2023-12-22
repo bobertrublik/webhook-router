@@ -30,6 +30,8 @@ type WebhookDaemon struct {
 	webhooks map[string]webhookd.WebhookHandler
 	// AllowDebug is a boolean flag to enable debugging reporting in webhook responses.
 	AllowDebug bool
+	// logger is a pointer to an instance of `log.Logger`. It is used throughout the WebhookDaemon for logging various information and errors.
+	logger *log.Logger
 }
 
 // NewWebhookDaemonFromConfig() returns a new `WebhookDaemon` derived from configuration data in 'cfg'.
@@ -215,7 +217,7 @@ func (d *WebhookDaemon) HandlerFunc() (http.HandlerFunc, error) {
 
 // HandlerFuncWithLogger() returns a `http.HandlerFunc` that handles HTTP (webhook) requests and response for 'd'
 // logging events to 'logger'.
-func (d *WebhookDaemon) HandlerFuncWithLogger(logger *log.Logger) (http.HandlerFunc, error) {
+func (d *WebhookDaemon) HandlerFuncWithLogger() (http.HandlerFunc, error) {
 
 	handler := func(rsp http.ResponseWriter, req *http.Request) {
 
@@ -229,7 +231,7 @@ func (d *WebhookDaemon) HandlerFuncWithLogger(logger *log.Logger) (http.HandlerF
 		wh, ok := d.webhooks[endpoint]
 
 		if !ok {
-			aa_log.Warning(logger, "Endpoint not found, %s", endpoint)
+			aa_log.Warning(d.logger, "Endpoint not found, %s", endpoint)
 			http.Error(rsp, "404 Not found", http.StatusNotFound)
 			return
 		}
@@ -257,10 +259,10 @@ func (d *WebhookDaemon) HandlerFuncWithLogger(logger *log.Logger) (http.HandlerF
 
 			switch err.Code {
 			case webhookd.UnhandledEvent, webhookd.HaltEvent:
-				aa_log.Info(logger, "Receiver step (%T)  returned non-fatal error and exiting, %v", rcvr, err)
+				aa_log.Info(d.logger, "Receiver step (%T)  returned non-fatal error and exiting, %v", rcvr, err)
 				return
 			default:
-				aa_log.Error(logger, "Receiver step (%T) failed, %v", rcvr, err)
+				aa_log.Error(d.logger, "Receiver step (%T) failed, %v", rcvr, err)
 				http.Error(rsp, err.Error(), err.Code)
 				return
 			}
@@ -280,10 +282,10 @@ func (d *WebhookDaemon) HandlerFuncWithLogger(logger *log.Logger) (http.HandlerF
 
 				switch err.Code {
 				case webhookd.UnhandledEvent, webhookd.HaltEvent:
-					aa_log.Info(logger, "Transformation step (%T) at offset %d returned non-fatal error and exiting, %v", step, idx, err)
+					aa_log.Info(d.logger, "Transformation step (%T) at offset %d returned non-fatal error and exiting, %v", step, idx, err)
 					return
 				default:
-					aa_log.Error(logger, "Transformation step (%T) at offset %d failed, %v", step, idx, err)
+					aa_log.Error(d.logger, "Transformation step (%T) at offset %d failed, %v", step, idx, err)
 					http.Error(rsp, err.Error(), err.Code)
 					return
 				}
@@ -304,29 +306,29 @@ func (d *WebhookDaemon) HandlerFuncWithLogger(logger *log.Logger) (http.HandlerF
 		wg := new(sync.WaitGroup)
 		ch := make(chan *webhookd.WebhookError)
 
-		for idx, d := range wh.Dispatchers() {
+		for idx, di := range wh.Dispatchers() {
 
 			wg.Add(1)
 
-			go func(idx int, d webhookd.WebhookDispatcher, body []byte) {
+			go func(idx int, di webhookd.WebhookDispatcher, body []byte) {
 
 				defer wg.Done()
 
-				err = d.Dispatch(ctx, body)
+				err = di.Dispatch(ctx, body)
 
 				if err != nil {
 
 					switch err.Code {
 					case webhookd.UnhandledEvent, webhookd.HaltEvent:
-						aa_log.Info(logger, "Dispatch step (%T) at offset %d returned non-fatal error and exiting, %v", d, idx, err)
+						aa_log.Info(d.logger, "Dispatch step (%T) at offset %d returned non-fatal error and exiting, %v", d, idx, err)
 						return
 					default:
-						aa_log.Error(logger, "Dispatch step (%T) at offset %d failed, %v", d, idx, err)
+						aa_log.Error(d.logger, "Dispatch step (%T) at offset %d failed, %v", d, idx, err)
 						ch <- err
 					}
 				}
 
-			}(idx, d, body)
+			}(idx, di, body)
 		}
 
 		// https://github.com/whosonfirst/go-webhookd/issues/14
@@ -356,10 +358,10 @@ func (d *WebhookDaemon) HandlerFuncWithLogger(logger *log.Logger) (http.HandlerF
 
 		t2 := time.Since(t1)
 
-		aa_log.Debug(logger, "Time to receive: %v", ttr)
-		aa_log.Debug(logger, "Time to transform: %v", ttt)
-		aa_log.Debug(logger, "Time to dispatch: %v", ttd)
-		aa_log.Debug(logger, "Time to process: %v", t2)
+		aa_log.Debug(d.logger, "Time to receive: %v", ttr)
+		aa_log.Debug(d.logger, "Time to transform: %v", ttt)
+		aa_log.Debug(d.logger, "Time to dispatch: %v", ttd)
+		aa_log.Debug(d.logger, "Time to process: %v", t2)
 
 		rsp.Header().Set("X-Webhookd-Time-To-Receive", fmt.Sprintf("%v", ttr))
 		rsp.Header().Set("X-Webhookd-Time-To-Transform", fmt.Sprintf("%v", ttt))
@@ -389,6 +391,7 @@ func (d *WebhookDaemon) AuthorizationMiddleware(next http.HandlerFunc) http.Hand
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			aa_log.Error(d.logger, "Error in AuthorizationMiddleware: 401 Unauthorized")
 			return // Ensure to return here to stop further processing
 		}
 
@@ -401,8 +404,8 @@ func (d *WebhookDaemon) AuthorizationMiddleware(next http.HandlerFunc) http.Hand
 
 // Start() causes 'd' to listen for, and process, requests.
 func (d *WebhookDaemon) Start(ctx context.Context) error {
-	logger := log.Default()
-	handler, err := d.HandlerFuncWithLogger(logger)
+	d.logger = log.Default()
+	handler, err := d.HandlerFuncWithLogger()
 	if err != nil {
 		return fmt.Errorf("Failed to create handler func, %w", err)
 	}
@@ -415,7 +418,7 @@ func (d *WebhookDaemon) Start(ctx context.Context) error {
 
 	svr := d.server
 
-	aa_log.Info(logger, "webhookd listening for requests on %s\n", svr.Address())
+	aa_log.Info(d.logger, "webhookd listening for requests on %s\n", svr.Address())
 
 	err = svr.ListenAndServe(ctx, mux)
 
