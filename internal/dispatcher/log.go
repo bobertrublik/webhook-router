@@ -2,7 +2,7 @@ package dispatcher
 
 import (
 	"context"
-	"github.com/bobertrublik/webhook-router/webhookd"
+	"github.com/bobertrublik/webhook-router/internal/webhookd"
 	"log"
 )
 

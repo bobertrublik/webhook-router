@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/aaronland/go-chicken"
-	"github.com/bobertrublik/webhook-router/webhookd"
+	"github.com/bobertrublik/webhook-router/internal/webhookd"
 	"net/url"
 	"strconv"
 )

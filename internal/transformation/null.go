@@ -2,7 +2,7 @@ package transformation
 
 import (
 	"context"
-	"github.com/bobertrublik/webhook-router/webhookd"
+	"github.com/bobertrublik/webhook-router/internal/webhookd"
 )
 
 func init() {

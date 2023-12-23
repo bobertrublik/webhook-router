@@ -3,7 +3,7 @@ package webhook
 
 import (
 	"context"
-	"github.com/bobertrublik/webhook-router/webhookd"
+	"github.com/bobertrublik/webhook-router/internal/webhookd"
 )
 
 // type Webhook defines a struct that implements the `webhookd.WebhookHandler` interface for definining and configuring an individual webhook.

@@ -3,7 +3,7 @@ package daemon
 import (
 	"context"
 	"fmt"
-	"github.com/bobertrublik/webhook-router/config"
+	"github.com/bobertrublik/webhook-router/internal/config"
 	"log"
 	"net/http"
 	"path/filepath"

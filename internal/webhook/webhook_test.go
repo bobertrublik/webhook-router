@@ -2,11 +2,12 @@ package webhook
 
 import (
 	"context"
+	"github.com/bobertrublik/webhook-router/internal/webhookd"
 	"testing"
 
-	"github.com/bobertrublik/webhook-router/dispatcher"
-	"github.com/bobertrublik/webhook-router/receiver"
-	"github.com/bobertrublik/webhook-router/transformation"
+	"github.com/bobertrublik/webhook-router/internal/dispatcher"
+	"github.com/bobertrublik/webhook-router/internal/receiver"
+	"github.com/bobertrublik/webhook-router/internal/transformation"
 )
 
 func TestWebhook(t *testing.T) {

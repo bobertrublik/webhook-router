@@ -4,7 +4,7 @@ package receiver
 import (
 	"context"
 	"fmt"
-	"github.com/bobertrublik/webhook-router/webhookd"
+	"github.com/bobertrublik/webhook-router/internal/webhookd"
 	"net/url"
 	"sort"
 
