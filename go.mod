@@ -1,4 +1,4 @@
-module github.com/whosonfirst/go-webhookd/v3
+module github.com/bobertrublik/webhook-router
 
 go 1.21.5
 

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/whosonfirst/go-webhookd/v3/config"
+	"github.com/bobertrublik/webhook-router/config"
 	"log"
 	"net/url"
 	"os"

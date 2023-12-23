@@ -3,7 +3,7 @@ package daemon
 import (
 	"context"
 	"fmt"
-	"github.com/whosonfirst/go-webhookd/v3/config"
+	"github.com/bobertrublik/webhook-router/config"
 	"log"
 	"net/http"
 	"path/filepath"

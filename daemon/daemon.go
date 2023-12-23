@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	webhookd2 "github.com/bobertrublik/webhook-router/webhookd"
 	"log"
 	"net/http"
 	"net/url"
@@ -15,12 +16,11 @@ import (
 
 	"github.com/aaronland/go-http-server"
 	aalog "github.com/aaronland/go-log/v2"
-	"github.com/whosonfirst/go-webhookd/v3"
-	"github.com/whosonfirst/go-webhookd/v3/config"
-	"github.com/whosonfirst/go-webhookd/v3/dispatcher"
-	"github.com/whosonfirst/go-webhookd/v3/receiver"
-	"github.com/whosonfirst/go-webhookd/v3/transformation"
-	"github.com/whosonfirst/go-webhookd/v3/webhook"
+	"github.com/bobertrublik/webhook-router/config"
+	"github.com/bobertrublik/webhook-router/dispatcher"
+	"github.com/bobertrublik/webhook-router/receiver"
+	"github.com/bobertrublik/webhook-router/transformation"
+	"github.com/bobertrublik/webhook-router/webhook"
 )
 
 // type WebhookDaemon is a struct that implements a long-running daemon to listen for	and process webhooks.
@@ -30,7 +30,7 @@ type WebhookDaemon struct {
 	// ApiKey provides the authorization control mechanism for the Webhook
 	ApiKey string
 	// webhooks is a dictionary of URIs and their corresponding `webhookd.WebhookHandler` instances.
-	webhooks map[string]webhookd.WebhookHandler
+	webhooks map[string]webhookd2.WebhookHandler
 	// AllowDebug is a boolean flag to enable debugging reporting in webhook responses.
 	AllowDebug bool
 
@@ -90,7 +90,7 @@ func NewWebhookDaemon(ctx context.Context, uri string) (*WebhookDaemon, error) {
 		return nil, fmt.Errorf("Failed to create new server instance, %w", err)
 	}
 
-	webhooks := make(map[string]webhookd.WebhookHandler)
+	webhooks := make(map[string]webhookd2.WebhookHandler)
 
 	d := WebhookDaemon{
 		server:     srv,
@@ -139,7 +139,7 @@ func (d *WebhookDaemon) AddWebhooksFromConfig(ctx context.Context, cfg *config.W
 			return fmt.Errorf("Failed to add receiver '%s', %w", recvUri, err)
 		}
 
-		var steps []webhookd.WebhookTransformation
+		var steps []webhookd2.WebhookTransformation
 
 		for _, name := range hook.Transformations {
 
@@ -162,7 +162,7 @@ func (d *WebhookDaemon) AddWebhooksFromConfig(ctx context.Context, cfg *config.W
 			steps = append(steps, step)
 		}
 
-		var sendto []webhookd.WebhookDispatcher
+		var sendto []webhookd2.WebhookDispatcher
 
 		for _, name := range hook.Dispatchers {
 
@@ -267,7 +267,7 @@ func (d *WebhookDaemon) HandlerFuncWithLogger() (http.HandlerFunc, error) {
 		if err != nil {
 
 			switch err.Code {
-			case webhookd.UnhandledEvent, webhookd.HaltEvent:
+			case webhookd2.UnhandledEvent, webhookd2.HaltEvent:
 				aalog.Info(d.logger, "Receiver step (%T)  returned non-fatal error and exiting, %v", rcvr, err)
 				return
 			default:
@@ -290,7 +290,7 @@ func (d *WebhookDaemon) HandlerFuncWithLogger() (http.HandlerFunc, error) {
 			if err != nil {
 
 				switch err.Code {
-				case webhookd.UnhandledEvent, webhookd.HaltEvent:
+				case webhookd2.UnhandledEvent, webhookd2.HaltEvent:
 					aalog.Info(d.logger, "Transformation step (%T) at offset %d returned non-fatal error and exiting, %v", step, idx, err)
 					return
 				default:
@@ -313,13 +313,13 @@ func (d *WebhookDaemon) HandlerFuncWithLogger() (http.HandlerFunc, error) {
 		ta = time.Now()
 
 		wg := new(sync.WaitGroup)
-		ch := make(chan *webhookd.WebhookError)
+		ch := make(chan *webhookd2.WebhookError)
 
 		for idx, di := range wh.Dispatchers() {
 
 			wg.Add(1)
 
-			go func(idx int, di webhookd.WebhookDispatcher, body []byte) {
+			go func(idx int, di webhookd2.WebhookDispatcher, body []byte) {
 
 				defer wg.Done()
 
@@ -328,7 +328,7 @@ func (d *WebhookDaemon) HandlerFuncWithLogger() (http.HandlerFunc, error) {
 				if err != nil {
 
 					switch err.Code {
-					case webhookd.UnhandledEvent, webhookd.HaltEvent:
+					case webhookd2.UnhandledEvent, webhookd2.HaltEvent:
 						aalog.Info(d.logger, "Dispatch step (%T) at offset %d returned non-fatal error and exiting, %v", d, idx, err)
 						return
 					default:

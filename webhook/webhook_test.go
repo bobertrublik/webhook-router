@@ -3,11 +3,10 @@ package webhook
 import (
 	"context"
 	"testing"
-	
-	"github.com/whosonfirst/go-webhookd/v3"
-	"github.com/whosonfirst/go-webhookd/v3/dispatcher"
-	"github.com/whosonfirst/go-webhookd/v3/receiver"
-	"github.com/whosonfirst/go-webhookd/v3/transformation"
+
+	"github.com/bobertrublik/webhook-router/dispatcher"
+	"github.com/bobertrublik/webhook-router/receiver"
+	"github.com/bobertrublik/webhook-router/transformation"
 )
 
 func TestWebhook(t *testing.T) {

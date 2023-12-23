@@ -2,7 +2,7 @@ package dispatcher
 
 import (
 	"context"
-	"github.com/whosonfirst/go-webhookd/v3"
+	"github.com/bobertrublik/webhook-router/webhookd"
 	"log"
 )
 

@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/aaronland/go-roster"
-	"github.com/whosonfirst/go-webhookd/v3"
+	"github.com/bobertrublik/webhook-router/webhookd"
 	"net/url"
 	"sort"
 )
