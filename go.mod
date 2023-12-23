@@ -1,6 +1,6 @@
 module github.com/whosonfirst/go-webhookd/v3
 
-go 1.18
+go 1.21.5
 
 require (
 	github.com/aaronland/go-chicken v0.2.2
