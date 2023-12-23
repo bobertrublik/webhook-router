@@ -3,6 +3,7 @@ package daemon
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -13,7 +14,7 @@ import (
 	"time"
 
 	"github.com/aaronland/go-http-server"
-	aa_log "github.com/aaronland/go-log/v2"
+	aalog "github.com/aaronland/go-log/v2"
 	"github.com/whosonfirst/go-webhookd/v3"
 	"github.com/whosonfirst/go-webhookd/v3/config"
 	"github.com/whosonfirst/go-webhookd/v3/dispatcher"
@@ -26,10 +27,13 @@ import (
 type WebhookDaemon struct {
 	// server is a `aaronland/go-http-server.Server` instance that handles HTTP requests and responses.
 	server server.Server
+	// ApiKey provides the authorization control mechanism for the Webhook
+	ApiKey string
 	// webhooks is a dictionary of URIs and their corresponding `webhookd.WebhookHandler` instances.
 	webhooks map[string]webhookd.WebhookHandler
 	// AllowDebug is a boolean flag to enable debugging reporting in webhook responses.
 	AllowDebug bool
+
 	// logger is a pointer to an instance of `log.Logger`. It is used throughout the WebhookDaemon for logging various information and errors.
 	logger *log.Logger
 }
@@ -65,19 +69,19 @@ func NewWebhookDaemon(ctx context.Context, uri string) (*WebhookDaemon, error) {
 
 	q := u.Query()
 
-	str_debug := q.Get("allow_debug")
+	strDebug := q.Get("allow_debug")
 
-	allow_debug := false
+	allowDebug := false
 
-	if str_debug != "" {
+	if strDebug != "" {
 
-		v, err := strconv.ParseBool(str_debug)
+		v, err := strconv.ParseBool(strDebug)
 
 		if err != nil {
-			return nil, fmt.Errorf("Invalid ?allow_debug parameter, %w", err)
+			return nil, fmt.Errorf("Invalid ?allowDebug parameter, %w", err)
 		}
 
-		allow_debug = v
+		allowDebug = v
 	}
 
 	srv, err := server.NewServer(ctx, uri)
@@ -91,7 +95,7 @@ func NewWebhookDaemon(ctx context.Context, uri string) (*WebhookDaemon, error) {
 	d := WebhookDaemon{
 		server:     srv,
 		webhooks:   webhooks,
-		AllowDebug: allow_debug,
+		AllowDebug: allowDebug,
 	}
 
 	return &d, nil
@@ -103,6 +107,11 @@ func (d *WebhookDaemon) AddWebhooksFromConfig(ctx context.Context, cfg *config.W
 	if len(cfg.Webhooks) == 0 {
 		return fmt.Errorf("No webhooks defined")
 	}
+
+	if len(cfg.ApiKey) == 0 {
+		return fmt.Errorf("No API key defined")
+	}
+	d.ApiKey = cfg.ApiKey
 
 	for i, hook := range cfg.Webhooks {
 
@@ -231,7 +240,7 @@ func (d *WebhookDaemon) HandlerFuncWithLogger() (http.HandlerFunc, error) {
 		wh, ok := d.webhooks[endpoint]
 
 		if !ok {
-			aa_log.Warning(d.logger, "Endpoint not found, %s", endpoint)
+			aalog.Warning(d.logger, "Endpoint not found, %s", endpoint)
 			http.Error(rsp, "404 Not found", http.StatusNotFound)
 			return
 		}
@@ -259,10 +268,10 @@ func (d *WebhookDaemon) HandlerFuncWithLogger() (http.HandlerFunc, error) {
 
 			switch err.Code {
 			case webhookd.UnhandledEvent, webhookd.HaltEvent:
-				aa_log.Info(d.logger, "Receiver step (%T)  returned non-fatal error and exiting, %v", rcvr, err)
+				aalog.Info(d.logger, "Receiver step (%T)  returned non-fatal error and exiting, %v", rcvr, err)
 				return
 			default:
-				aa_log.Error(d.logger, "Receiver step (%T) failed, %v", rcvr, err)
+				aalog.Error(d.logger, "Receiver step (%T) failed, %v", rcvr, err)
 				http.Error(rsp, err.Error(), err.Code)
 				return
 			}
@@ -282,10 +291,10 @@ func (d *WebhookDaemon) HandlerFuncWithLogger() (http.HandlerFunc, error) {
 
 				switch err.Code {
 				case webhookd.UnhandledEvent, webhookd.HaltEvent:
-					aa_log.Info(d.logger, "Transformation step (%T) at offset %d returned non-fatal error and exiting, %v", step, idx, err)
+					aalog.Info(d.logger, "Transformation step (%T) at offset %d returned non-fatal error and exiting, %v", step, idx, err)
 					return
 				default:
-					aa_log.Error(d.logger, "Transformation step (%T) at offset %d failed, %v", step, idx, err)
+					aalog.Error(d.logger, "Transformation step (%T) at offset %d failed, %v", step, idx, err)
 					http.Error(rsp, err.Error(), err.Code)
 					return
 				}
@@ -320,10 +329,10 @@ func (d *WebhookDaemon) HandlerFuncWithLogger() (http.HandlerFunc, error) {
 
 					switch err.Code {
 					case webhookd.UnhandledEvent, webhookd.HaltEvent:
-						aa_log.Info(d.logger, "Dispatch step (%T) at offset %d returned non-fatal error and exiting, %v", d, idx, err)
+						aalog.Info(d.logger, "Dispatch step (%T) at offset %d returned non-fatal error and exiting, %v", d, idx, err)
 						return
 					default:
-						aa_log.Error(d.logger, "Dispatch step (%T) at offset %d failed, %v", d, idx, err)
+						aalog.Error(d.logger, "Dispatch step (%T) at offset %d failed, %v", d, idx, err)
 						ch <- err
 					}
 				}
@@ -358,10 +367,10 @@ func (d *WebhookDaemon) HandlerFuncWithLogger() (http.HandlerFunc, error) {
 
 		t2 := time.Since(t1)
 
-		aa_log.Debug(d.logger, "Time to receive: %v", ttr)
-		aa_log.Debug(d.logger, "Time to transform: %v", ttt)
-		aa_log.Debug(d.logger, "Time to dispatch: %v", ttd)
-		aa_log.Debug(d.logger, "Time to process: %v", t2)
+		aalog.Debug(d.logger, "Time to receive: %v", ttr)
+		aalog.Debug(d.logger, "Time to transform: %v", ttt)
+		aalog.Debug(d.logger, "Time to dispatch: %v", ttd)
+		aalog.Debug(d.logger, "Time to process: %v", t2)
 
 		rsp.Header().Set("X-Webhookd-Time-To-Receive", fmt.Sprintf("%v", ttr))
 		rsp.Header().Set("X-Webhookd-Time-To-Transform", fmt.Sprintf("%v", ttt))
@@ -390,16 +399,40 @@ func (d *WebhookDaemon) AuthorizationMiddleware(next http.HandlerFunc) http.Hand
 	return func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
+			aalog.Error(d.logger, "Error in AuthorizationMiddleware: 401 Unauthorized")
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			aa_log.Error(d.logger, "Error in AuthorizationMiddleware: 401 Unauthorized")
 			return // Ensure to return here to stop further processing
 		}
 
-		// Add your logic here to validate the authHeader
+		apiKey, err := bearerToken(r)
+		if err != nil {
+			aalog.Error(d.logger, "request failed API key authentication: %v, token: %v", err, apiKey)
+			http.Error(w, "invalid API key", http.StatusUnauthorized)
+			return
+		}
+
+		if d.ApiKey != apiKey {
+			aalog.Error(d.logger, "no matching API key found")
+			http.Error(w, "invalid api key", http.StatusUnauthorized)
+			return
+		}
 
 		// Call the next handler if authorization is successful
 		next.ServeHTTP(w, r)
 	}
+}
+
+// bearerToken extracts the content from the header, striping the Bearer prefix
+func bearerToken(r *http.Request) (string, error) {
+	rawToken := r.Header.Get("Authorization")
+	pieces := strings.SplitN(rawToken, " ", 2)
+	if len(pieces) < 2 {
+		return "", errors.New("token with incorrect bearer format")
+	}
+
+	token := strings.TrimSpace(pieces[1])
+
+	return token, nil
 }
 
 // Start() causes 'd' to listen for, and process, requests.
@@ -418,7 +451,7 @@ func (d *WebhookDaemon) Start(ctx context.Context) error {
 
 	svr := d.server
 
-	aa_log.Info(d.logger, "webhookd listening for requests on %s\n", svr.Address())
+	aalog.Info(d.logger, "webhookd listening for requests on %s\n", svr.Address())
 
 	err = svr.ListenAndServe(ctx, mux)
 

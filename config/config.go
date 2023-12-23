@@ -9,7 +9,9 @@ import (
 	_ "log"
 	"strings"
 
+	"github.com/rs/cors"
 	"github.com/sfomuseum/runtimevar"
+	"github.com/unrolled/secure"
 )
 
 // type WebhookConfig is a struct containing configuration information for a `webhookd` instance.
@@ -17,6 +19,8 @@ type WebhookConfig struct {
 	// Daemon is a valid `aaronland/go-http-server` URI. This determines how the `webhookd` server will be
 	// instantiated and listen for requests.
 	Daemon string `json:"daemon"`
+	// ApiKey provides the authorization control mechanism for the Webhook
+	ApiKey string `json:"apikey"`
 	// Receivers is a dictionary of available receivers where the key is a unique label used to identify the
 	// receiver (in `WebhookWebhooksConfig`) and the value is a URI used to instantiate the reciever.
 	Receivers map[string]string `json:"receivers"`
@@ -44,6 +48,14 @@ type WebhookWebhooksConfig struct {
 	// Dispatchers is a list of dispatcher labels configured in `WebhookConfig.Dispatchers`. Each dispatcher takes the output
 	// of the last transformation and relays ("dispatches") it acccording to its internal rules.
 	Dispatchers []string `json:"dispatchers"`
+}
+
+type AuthenticationConfig struct {
+	Port          string
+	SecureOptions secure.Options
+	CorsOptions   cors.Options
+	Audience      string
+	Domain        string
 }
 
 // NewConfigFromURI returns a new `WebhookConfig` instance derived from 'uri' which is expected to take the form of
@@ -111,4 +123,27 @@ func (c *WebhookConfig) GetTransformationConfigByName(name string) (string, erro
 	}
 
 	return config, nil
+}
+
+func SecureOptions() secure.Options {
+	return secure.Options{
+		STSSeconds:            31536000,
+		STSIncludeSubdomains:  true,
+		STSPreload:            true,
+		FrameDeny:             true,
+		ForceSTSHeader:        true,
+		ContentTypeNosniff:    true,
+		BrowserXssFilter:      true,
+		CustomBrowserXssValue: "0",
+		ContentSecurityPolicy: "default-src 'self', frame-ancestors 'none'",
+	}
+}
+
+func CorsOptions(clientOriginUrl string) cors.Options {
+	return cors.Options{
+		AllowedOrigins: []string{clientOriginUrl},
+		AllowedMethods: []string{"GET"},
+		AllowedHeaders: []string{"Content-Type", "Authorization"},
+		MaxAge:         86400,
+	}
 }

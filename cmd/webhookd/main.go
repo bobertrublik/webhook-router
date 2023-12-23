@@ -35,6 +35,8 @@ func main() {
 
 	cfg, err := config.NewConfigFromURI(ctx, *config_uri)
 
+	cfg.ApiKey = os.Getenv("WEBHOOK_API_KEY")
+
 	if err != nil {
 		log.Fatalf("Failed to load config %s, %v", *config_uri, err)
 	}
