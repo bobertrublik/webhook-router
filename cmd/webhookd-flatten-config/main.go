@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/bobertrublik/webhook-router/config"
+	"github.com/bobertrublik/webhook-router/internal/config"
 	"io"
 	"log"
 	"net/url"
