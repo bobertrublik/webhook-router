@@ -3,7 +3,6 @@ package daemon
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/bobertrublik/webhook-router/internal/webhookd"
 	"log"
@@ -404,35 +403,9 @@ func (d *WebhookDaemon) AuthorizationMiddleware(next http.HandlerFunc) http.Hand
 			return // Ensure to return here to stop further processing
 		}
 
-		apiKey, err := bearerToken(r)
-		if err != nil {
-			aalog.Error(d.logger, "request failed API key authentication: %v, token: %v", err, apiKey)
-			http.Error(w, "invalid API key", http.StatusUnauthorized)
-			return
-		}
-
-		if d.ApiKey != apiKey {
-			aalog.Error(d.logger, "no matching API key found")
-			http.Error(w, "invalid api key", http.StatusUnauthorized)
-			return
-		}
-
 		// Call the next handler if authorization is successful
 		next.ServeHTTP(w, r)
 	}
-}
-
-// bearerToken extracts the content from the header, striping the Bearer prefix
-func bearerToken(r *http.Request) (string, error) {
-	rawToken := r.Header.Get("Authorization")
-	pieces := strings.SplitN(rawToken, " ", 2)
-	if len(pieces) < 2 {
-		return "", errors.New("token with incorrect bearer format")
-	}
-
-	token := strings.TrimSpace(pieces[1])
-
-	return token, nil
 }
 
 // Start() causes 'd' to listen for, and process, requests.
