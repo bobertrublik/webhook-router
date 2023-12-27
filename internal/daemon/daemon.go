@@ -107,11 +107,6 @@ func (d *WebhookDaemon) AddWebhooksFromConfig(ctx context.Context, cfg *config.W
 		return fmt.Errorf("No webhooks defined")
 	}
 
-	if len(cfg.ApiKey) == 0 {
-		return fmt.Errorf("No API key defined")
-	}
-	d.ApiKey = cfg.ApiKey
-
 	for i, hook := range cfg.Webhooks {
 
 		if hook.Endpoint == "" {
