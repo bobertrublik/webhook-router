@@ -4,6 +4,7 @@ package daemon
 import (
 	"context"
 	"fmt"
+	"github.com/bobertrublik/webhook-router/internal/logger"
 	"github.com/bobertrublik/webhook-router/internal/webhookd"
 	"log"
 	"net/http"
@@ -13,8 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aaronland/go-http-server"
-	aalog "github.com/aaronland/go-log/v2"
 	"github.com/bobertrublik/webhook-router/internal/config"
 	"github.com/bobertrublik/webhook-router/internal/dispatcher"
 	"github.com/bobertrublik/webhook-router/internal/receiver"
@@ -24,8 +23,6 @@ import (
 
 // type WebhookDaemon is a struct that implements a long-running daemon to listen for	and process webhooks.
 type WebhookDaemon struct {
-	// server is a `aaronland/go-http-server.Server` instance that handles HTTP requests and responses.
-	server server.Server
 	// webhooks is a dictionary of URIs and their corresponding `webhookd.WebhookHandler` instances.
 	webhooks map[string]webhookd.WebhookHandler
 	// AllowDebug is a boolean flag to enable debugging reporting in webhook responses.
@@ -81,8 +78,6 @@ func NewWebhookDaemon(ctx context.Context, uri string) (*WebhookDaemon, error) {
 		allowDebug = v
 	}
 
-	srv, err := server.NewServer(ctx, uri)
-
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create new server instance, %w", err)
 	}
@@ -90,7 +85,6 @@ func NewWebhookDaemon(ctx context.Context, uri string) (*WebhookDaemon, error) {
 	webhooks := make(map[string]webhookd.WebhookHandler)
 
 	d := WebhookDaemon{
-		server:     srv,
 		webhooks:   webhooks,
 		AllowDebug: allowDebug,
 	}
@@ -249,7 +243,7 @@ func (d *WebhookDaemon) ProcessRequest(w http.ResponseWriter, r *http.Request) e
 
 		switch err.Code {
 		case webhookd.UnhandledEvent, webhookd.HaltEvent:
-			aalog.Info(d.logger, "Receiver step (%T)  returned non-fatal error and exiting, %v", rcvr, err)
+			logger.Log.Info("Receiver step (%T)  returned non-fatal error and exiting, %v", rcvr, err)
 			return nil
 		default:
 			http.Error(w, err.Error(), err.Code)
@@ -271,7 +265,7 @@ func (d *WebhookDaemon) ProcessRequest(w http.ResponseWriter, r *http.Request) e
 
 			switch err.Code {
 			case webhookd.UnhandledEvent, webhookd.HaltEvent:
-				aalog.Info(d.logger, "Transformation step (%T) at offset %d returned non-fatal error and exiting, %v", step, idx, err)
+				logger.Log.Info("Transformation step (%T) at offset %d returned non-fatal error and exiting, %v", step, idx, err)
 				return nil
 			default:
 				http.Error(w, err.Error(), err.Code)
@@ -308,10 +302,10 @@ func (d *WebhookDaemon) ProcessRequest(w http.ResponseWriter, r *http.Request) e
 
 				switch err.Code {
 				case webhookd.UnhandledEvent, webhookd.HaltEvent:
-					aalog.Info(d.logger, "Dispatch step (%T) at offset %d returned non-fatal error and exiting, %v", d, idx, err)
+					logger.Log.Info("Dispatch step (%T) at offset %d returned non-fatal error and exiting, %v", d, idx, err)
 					return
 				default:
-					aalog.Error(d.logger, "Dispatch step (%T) at offset %d failed, %v", d, idx, err)
+					logger.Log.Error("Dispatch step (%T) at offset %d failed, %v", d, idx, err)
 					ch <- err
 				}
 			}
@@ -346,10 +340,10 @@ func (d *WebhookDaemon) ProcessRequest(w http.ResponseWriter, r *http.Request) e
 
 	t2 := time.Since(t1)
 
-	aalog.Debug(d.logger, "Time to receive: %v", ttr)
-	aalog.Debug(d.logger, "Time to transform: %v", ttt)
-	aalog.Debug(d.logger, "Time to dispatch: %v", ttd)
-	aalog.Debug(d.logger, "Time to process: %v", t2)
+	logger.Log.Debug("Time to receive: %v", ttr)
+	logger.Log.Debug("Time to transform: %v", ttt)
+	logger.Log.Debug("Time to dispatch: %v", ttd)
+	logger.Log.Debug("Time to process: %v", t2)
 
 	w.Header().Set("X-Webhookd-Time-To-Receive", fmt.Sprintf("%v", ttr))
 	w.Header().Set("X-Webhookd-Time-To-Transform", fmt.Sprintf("%v", ttt))

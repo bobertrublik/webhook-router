@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"github.com/bobertrublik/webhook-router/internal/config"
 	"github.com/bobertrublik/webhook-router/internal/daemon"
+	"github.com/bobertrublik/webhook-router/internal/logger"
 	"github.com/bobertrublik/webhook-router/internal/router"
 	"github.com/joho/godotenv"
 	"github.com/sfomuseum/go-flags/flagset"
-	"log"
 	"net/http"
 	"os"
 )
@@ -17,7 +17,8 @@ import (
 func main() {
 
 	if err := godotenv.Load(); err != nil {
-		log.Fatalf("Error loading the .env file: %v", err)
+		logger.Log.Error("Error loading the .env file: %v", err)
+		os.Exit(1)
 	}
 
 	fs := flagset.NewFlagSet("webhooks")
@@ -35,7 +36,7 @@ func main() {
 	err := flagset.SetFlagsFromEnvVarsWithFeedback(fs, "WEBHOOKD", false)
 
 	if err != nil {
-		log.Fatalf("Failed to set flags from env vars, %v", err)
+		logger.Log.Error("Failed to set flags from env vars, %v", err)
 	}
 
 	ctx := context.Background()
@@ -43,19 +44,19 @@ func main() {
 	cfg, err := config.NewConfigFromURI(ctx, *config_uri)
 
 	if err != nil {
-		log.Fatalf("Failed to load config %s, %v", *config_uri, err)
+		logger.Log.Error("Failed to load config %s, %v", *config_uri, err)
 	}
 
 	wh_daemon, err := daemon.NewWebhookDaemonFromConfig(ctx, cfg)
 
 	if err != nil {
-		log.Fatalf("Failed to create webhook daemon, %v", err)
+		logger.Log.Error("Failed to create webhook daemon, %v", err)
 	}
 
 	rtr := router.New(wh_daemon)
 
-	log.Print("Server listening on http://localhost:8080")
+	logger.Log.Info("Server listening on http://localhost:8080")
 	if err := http.ListenAndServe("0.0.0.0:8080", rtr); err != nil {
-		log.Fatalf("There was an error with the http server: %v", err)
+		logger.Log.Error("There was an error with the http server: %v", err)
 	}
 }
