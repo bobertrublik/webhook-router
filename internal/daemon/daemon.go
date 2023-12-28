@@ -26,8 +26,6 @@ import (
 type WebhookDaemon struct {
 	// server is a `aaronland/go-http-server.Server` instance that handles HTTP requests and responses.
 	server server.Server
-	// ApiKey provides the authorization control mechanism for the Webhook
-	ApiKey string
 	// webhooks is a dictionary of URIs and their corresponding `webhookd.WebhookHandler` instances.
 	webhooks map[string]webhookd.WebhookHandler
 	// AllowDebug is a boolean flag to enable debugging reporting in webhook responses.
@@ -210,221 +208,176 @@ func (d *WebhookDaemon) AddWebhook(ctx context.Context, wh webhook.Webhook) erro
 	return nil
 }
 
-/*
-// HandlerFunc() returns a `http.HandlerFunc` that handles HTTP (webhook) requests and response for 'd'.
-func (d *WebhookDaemon) HandlerFunc() (http.HandlerFunc, error) {
-	logger := log.Default()
-	return d.HandlerFuncWithLogger(logger)
-}
-*/
-
 // HandlerFuncWithLogger() returns a `http.HandlerFunc` that handles HTTP (webhook) requests and response for 'd'
 // logging events to 'logger'.
-func (d *WebhookDaemon) HandlerFuncWithLogger() (http.HandlerFunc, error) {
+func (d *WebhookDaemon) ProcessRequest(w http.ResponseWriter, r *http.Request) error {
 
-	handler := func(rsp http.ResponseWriter, req *http.Request) {
+	ctx := r.Context()
 
-		ctx := req.Context()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
+	endpoint := r.URL.Path
 
-		endpoint := req.URL.Path
+	wh, ok := d.webhooks[endpoint]
 
-		wh, ok := d.webhooks[endpoint]
+	if !ok {
+		http.Error(w, "404 Not found", http.StatusNotFound)
+		return fmt.Errorf("Endpoint not found, %s", endpoint)
+	}
 
-		if !ok {
-			aalog.Warning(d.logger, "Endpoint not found, %s", endpoint)
-			http.Error(rsp, "404 Not found", http.StatusNotFound)
-			return
+	t1 := time.Now()
+
+	var ta time.Time
+	var tb time.Duration
+
+	var ttr time.Duration // time to receive
+	var ttt time.Duration // time to transform
+	var ttd time.Duration // time to dispatch
+
+	ta = time.Now()
+
+	rcvr := wh.Receiver()
+
+	body, err := rcvr.Receive(ctx, r)
+
+	// we use -1 to signal that this is an unhandled event but
+	// not an error, for example when github sends a ping message
+	// (20190212/thisisaaronland)
+
+	if err != nil {
+
+		switch err.Code {
+		case webhookd.UnhandledEvent, webhookd.HaltEvent:
+			aalog.Info(d.logger, "Receiver step (%T)  returned non-fatal error and exiting, %v", rcvr, err)
+			return nil
+		default:
+			http.Error(w, err.Error(), err.Code)
+			return fmt.Errorf("Receiver step (%T) failed, %v", rcvr, err)
 		}
+	}
 
-		t1 := time.Now()
+	tb = time.Since(ta)
 
-		var ta time.Time
-		var tb time.Duration
+	ttr = tb
 
-		var ttr time.Duration // time to receive
-		var ttt time.Duration // time to transform
-		var ttd time.Duration // time to dispatch
+	ta = time.Now()
 
-		ta = time.Now()
+	for idx, step := range wh.Transformations() {
 
-		rcvr := wh.Receiver()
-
-		body, err := rcvr.Receive(ctx, req)
-
-		// we use -1 to signal that this is an unhandled event but
-		// not an error, for example when github sends a ping message
-		// (20190212/thisisaaronland)
+		body, err = step.Transform(ctx, body)
 
 		if err != nil {
 
 			switch err.Code {
 			case webhookd.UnhandledEvent, webhookd.HaltEvent:
-				aalog.Info(d.logger, "Receiver step (%T)  returned non-fatal error and exiting, %v", rcvr, err)
-				return
+				aalog.Info(d.logger, "Transformation step (%T) at offset %d returned non-fatal error and exiting, %v", step, idx, err)
+				return nil
 			default:
-				aalog.Error(d.logger, "Receiver step (%T) failed, %v", rcvr, err)
-				http.Error(rsp, err.Error(), err.Code)
-				return
+				http.Error(w, err.Error(), err.Code)
+				return fmt.Errorf("Transformation step (%T) at offset %d failed, %v", step, idx, err)
 			}
 		}
 
-		tb = time.Since(ta)
+		// check to see if there is anything left the transformation
+		// https://github.com/whosonfirst/go-webhookd/v3/issues/7
+	}
 
-		ttr = tb
+	tb = time.Since(ta)
+	ttt = tb
 
-		ta = time.Now()
+	// check to see if there is anything to dispatch
+	// https://github.com/whosonfirst/go-webhookd/v3/issues/7
 
-		for idx, step := range wh.Transformations() {
+	ta = time.Now()
 
-			body, err = step.Transform(ctx, body)
+	wg := new(sync.WaitGroup)
+	ch := make(chan *webhookd.WebhookError)
+
+	for idx, di := range wh.Dispatchers() {
+
+		wg.Add(1)
+
+		go func(idx int, di webhookd.WebhookDispatcher, body []byte) {
+
+			defer wg.Done()
+
+			err = di.Dispatch(ctx, body)
 
 			if err != nil {
 
 				switch err.Code {
 				case webhookd.UnhandledEvent, webhookd.HaltEvent:
-					aalog.Info(d.logger, "Transformation step (%T) at offset %d returned non-fatal error and exiting, %v", step, idx, err)
+					aalog.Info(d.logger, "Dispatch step (%T) at offset %d returned non-fatal error and exiting, %v", d, idx, err)
 					return
 				default:
-					aalog.Error(d.logger, "Transformation step (%T) at offset %d failed, %v", step, idx, err)
-					http.Error(rsp, err.Error(), err.Code)
-					return
+					aalog.Error(d.logger, "Dispatch step (%T) at offset %d failed, %v", d, idx, err)
+					ch <- err
 				}
 			}
 
-			// check to see if there is anything left the transformation
-			// https://github.com/whosonfirst/go-webhookd/v3/issues/7
-		}
-
-		tb = time.Since(ta)
-		ttt = tb
-
-		// check to see if there is anything to dispatch
-		// https://github.com/whosonfirst/go-webhookd/v3/issues/7
-
-		ta = time.Now()
-
-		wg := new(sync.WaitGroup)
-		ch := make(chan *webhookd.WebhookError)
-
-		for idx, di := range wh.Dispatchers() {
-
-			wg.Add(1)
-
-			go func(idx int, di webhookd.WebhookDispatcher, body []byte) {
-
-				defer wg.Done()
-
-				err = di.Dispatch(ctx, body)
-
-				if err != nil {
-
-					switch err.Code {
-					case webhookd.UnhandledEvent, webhookd.HaltEvent:
-						aalog.Info(d.logger, "Dispatch step (%T) at offset %d returned non-fatal error and exiting, %v", d, idx, err)
-						return
-					default:
-						aalog.Error(d.logger, "Dispatch step (%T) at offset %d failed, %v", d, idx, err)
-						ch <- err
-					}
-				}
-
-			}(idx, di, body)
-		}
-
-		// https://github.com/whosonfirst/go-webhookd/issues/14
-		// this is broken as in len(errors) will always be zero even if
-		// there are errors (20190214/thisisaaronland)
-
-		errors := make([]string, 0)
-
-		go func() {
-
-			for e := range ch {
-				errors = append(errors, e.Error())
-			}
-		}()
-
-		wg.Wait()
-
-		if len(errors) > 0 {
-
-			msg := strings.Join(errors, "\n\n")
-			http.Error(rsp, msg, http.StatusInternalServerError)
-			return
-		}
-
-		tb = time.Since(ta)
-		ttd = tb
-
-		t2 := time.Since(t1)
-
-		aalog.Debug(d.logger, "Time to receive: %v", ttr)
-		aalog.Debug(d.logger, "Time to transform: %v", ttt)
-		aalog.Debug(d.logger, "Time to dispatch: %v", ttd)
-		aalog.Debug(d.logger, "Time to process: %v", t2)
-
-		rsp.Header().Set("X-Webhookd-Time-To-Receive", fmt.Sprintf("%v", ttr))
-		rsp.Header().Set("X-Webhookd-Time-To-Transform", fmt.Sprintf("%v", ttt))
-		rsp.Header().Set("X-Webhookd-Time-To-Dispatch", fmt.Sprintf("%v", ttd))
-		rsp.Header().Set("X-Webhookd-Time-To-Process", fmt.Sprintf("%v", t2))
-
-		if d.AllowDebug {
-
-			query := req.URL.Query()
-			debug := query.Get("debug")
-
-			if debug != "" {
-				rsp.Header().Set("Content-Type", "text/plain")
-				rsp.Header().Set("Access-Control-Allow-Origin", "*")
-				rsp.Write(body)
-			}
-		}
-
-		return
+		}(idx, di, body)
 	}
 
-	return http.HandlerFunc(handler), nil
-}
+	// https://github.com/whosonfirst/go-webhookd/issues/14
+	// this is broken as in len(errors) will always be zero even if
+	// there are errors (20190214/thisisaaronland)
 
-func (d *WebhookDaemon) AuthorizationMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			aalog.Error(d.logger, "Error in AuthorizationMiddleware: 401 Unauthorized")
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return // Ensure to return here to stop further processing
+	errors := make([]string, 0)
+
+	go func() {
+
+		for e := range ch {
+			errors = append(errors, e.Error())
 		}
+	}()
 
-		// Call the next handler if authorization is successful
-		next.ServeHTTP(w, r)
+	wg.Wait()
+
+	if len(errors) > 0 {
+
+		msg := strings.Join(errors, "\n\n")
+		http.Error(w, msg, http.StatusInternalServerError)
+		return fmt.Errorf("Internal Server Error")
 	}
+
+	tb = time.Since(ta)
+	ttd = tb
+
+	t2 := time.Since(t1)
+
+	aalog.Debug(d.logger, "Time to receive: %v", ttr)
+	aalog.Debug(d.logger, "Time to transform: %v", ttt)
+	aalog.Debug(d.logger, "Time to dispatch: %v", ttd)
+	aalog.Debug(d.logger, "Time to process: %v", t2)
+
+	w.Header().Set("X-Webhookd-Time-To-Receive", fmt.Sprintf("%v", ttr))
+	w.Header().Set("X-Webhookd-Time-To-Transform", fmt.Sprintf("%v", ttt))
+	w.Header().Set("X-Webhookd-Time-To-Dispatch", fmt.Sprintf("%v", ttd))
+	w.Header().Set("X-Webhookd-Time-To-Process", fmt.Sprintf("%v", t2))
+
+	if d.AllowDebug {
+
+		query := r.URL.Query()
+		debug := query.Get("debug")
+
+		if debug != "" {
+			w.Header().Set("Content-Type", "text/plain")
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Write(body)
+		}
+	}
+
+	return nil
+
 }
 
 // Start() causes 'd' to listen for, and process, requests.
-func (d *WebhookDaemon) Start(ctx context.Context) error {
+func (d *WebhookDaemon) Start(w http.ResponseWriter, r *http.Request) error {
 	d.logger = log.Default()
-	handler, err := d.HandlerFuncWithLogger()
+	err := d.ProcessRequest(w, r)
 	if err != nil {
-		return fmt.Errorf("Failed to create handler func, %w", err)
-	}
-
-	// Wrap the handler with the AuthorizationMiddleware
-	authorizedHandler := d.AuthorizationMiddleware(handler)
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", authorizedHandler)
-
-	svr := d.server
-
-	aalog.Info(d.logger, "webhookd listening for requests on %s\n", svr.Address())
-
-	err = svr.ListenAndServe(ctx, mux)
-
-	if err != nil {
-		return fmt.Errorf("Failed to listen for requests, %w", err)
+		return err
 	}
 	return nil
 }

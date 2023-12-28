@@ -9,9 +9,7 @@ import (
 	_ "log"
 	"strings"
 
-	"github.com/rs/cors"
 	"github.com/sfomuseum/runtimevar"
-	"github.com/unrolled/secure"
 )
 
 // type WebhookConfig is a struct containing configuration information for a `webhookd` instance.
@@ -46,14 +44,6 @@ type WebhookWebhooksConfig struct {
 	// Dispatchers is a list of dispatcher labels configured in `WebhookConfig.Dispatchers`. Each dispatcher takes the output
 	// of the last transformation and relays ("dispatches") it acccording to its internal rules.
 	Dispatchers []string `json:"dispatchers"`
-}
-
-type AuthenticationConfig struct {
-	Port          string
-	SecureOptions secure.Options
-	CorsOptions   cors.Options
-	Audience      string
-	Domain        string
 }
 
 // NewConfigFromURI returns a new `WebhookConfig` instance derived from 'uri' which is expected to take the form of

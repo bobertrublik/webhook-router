@@ -1,3 +1,5 @@
+include .env
+export
 GOMOD=vendor
 
 bump-version:
@@ -16,3 +18,6 @@ local-scan:
 
 godoc:
 	godoc -http=:6060
+
+run:
+	go run ./cmd/webhookd/main.go -config-uri 'file:///Users/bobertrublik/go/src/github.com/bobertrublik/webhook-router/docs/config/config.json.example?decoder=string'

@@ -4,3 +4,4 @@ config*.json
 .scannerwork
 .idea
 vendor
+/.env

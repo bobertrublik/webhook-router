@@ -6,12 +6,19 @@ import (
 	"fmt"
 	"github.com/bobertrublik/webhook-router/internal/config"
 	"github.com/bobertrublik/webhook-router/internal/daemon"
+	"github.com/bobertrublik/webhook-router/internal/router"
+	"github.com/joho/godotenv"
 	"github.com/sfomuseum/go-flags/flagset"
 	"log"
+	"net/http"
 	"os"
 )
 
 func main() {
+
+	if err := godotenv.Load(); err != nil {
+		log.Fatalf("Error loading the .env file: %v", err)
+	}
 
 	fs := flagset.NewFlagSet("webhooks")
 
@@ -45,11 +52,10 @@ func main() {
 		log.Fatalf("Failed to create webhook daemon, %v", err)
 	}
 
-	err = wh_daemon.Start(ctx)
+	rtr := router.New(wh_daemon)
 
-	if err != nil {
-		log.Fatalf("Failed to start webhook daemon, %v", err)
+	log.Print("Server listening on http://localhost:8080")
+	if err := http.ListenAndServe("0.0.0.0:8080", rtr); err != nil {
+		log.Fatalf("There was an error with the http server: %v", err)
 	}
-
-	os.Exit(0)
 }

@@ -1,8 +1,7 @@
 {
     "daemon": "http://localhost:8080",
     "receivers": {
-	"insecure": "insecure://",
-	"secure": "secure://"
+	"insecure": "insecure://"
     },
     "transformations": {
 	"null": "null://",
@@ -15,8 +14,8 @@
     },
     "webhooks": [
 	{
-	    "endpoint": "/secure-test",
-	    "receiver": "secure",
+	    "endpoint": "/api",
+	    "receiver": "insecure",
 	    "transformations": [ "null" ],
 	    "dispatchers": [ "log" ]
 	}
