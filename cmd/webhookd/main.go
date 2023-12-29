@@ -23,7 +23,7 @@ func main() {
 
 	fs := flagset.NewFlagSet("webhooks")
 
-	config_uri := fs.String("config-uri", "", "A valid Go Cloud runtimevar URI representing your webhookd config.")
+	configFile := fs.String("config", "/etc/config/config.yaml", "Path to config file")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "webhookd is a command line tool to start a go-webhookd daemon and serve requests over HTTP.\n")
@@ -33,30 +33,26 @@ func main() {
 
 	flagset.Parse(fs)
 
-	err := flagset.SetFlagsFromEnvVarsWithFeedback(fs, "WEBHOOKD", false)
+	cfg, err := config.NewConfig(*configFile)
 
 	if err != nil {
-		logger.Log.Error("Failed to set flags from env vars, %v", err)
+		logger.Log.Error("Failed to load config %s, %v", configFile, err)
+		os.Exit(1)
 	}
-
 	ctx := context.Background()
 
-	cfg, err := config.NewConfigFromURI(ctx, *config_uri)
-
-	if err != nil {
-		logger.Log.Error("Failed to load config %s, %v", *config_uri, err)
-	}
-
-	wh_daemon, err := daemon.NewWebhookDaemonFromConfig(ctx, cfg)
+	webhookDaemon, err := daemon.NewWebhookDaemonFromConfig(ctx, cfg)
 
 	if err != nil {
 		logger.Log.Error("Failed to create webhook daemon, %v", err)
+		os.Exit(1)
 	}
 
-	rtr := router.New(wh_daemon)
+	rtr := router.New(webhookDaemon)
 
 	logger.Log.Info("Server listening on http://localhost:8080")
 	if err := http.ListenAndServe("0.0.0.0:8080", rtr); err != nil {
 		logger.Log.Error("There was an error with the http server: %v", err)
+		os.Exit(1)
 	}
 }

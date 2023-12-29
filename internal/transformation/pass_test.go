@@ -6,17 +6,17 @@ import (
 	"testing"
 )
 
-func TestChickenTransformation(t *testing.T) {
+func TestNullTransformation(t *testing.T) {
 
 	ctx := context.Background()
 
 	input := []byte("hello world")
-	expected := []byte("🐔 🐔")
+	expected := input
 
-	tr, err := NewTransformation(ctx, "chicken://zxx?clucking=false")
+	tr, err := NewTransformation(ctx, "pass://")
 
 	if err != nil {
-		t.Fatalf("Failed to create new chicken transformation, %v", err)
+		t.Fatalf("Failed to create new null transformation, %v", err)
 	}
 
 	output, err2 := tr.Transform(ctx, input)

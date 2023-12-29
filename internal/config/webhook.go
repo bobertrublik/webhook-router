@@ -2,14 +2,11 @@
 package config
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
-	"io"
+	"gopkg.in/yaml.v3"
+	"log"
 	_ "log"
-	"strings"
-
-	"github.com/sfomuseum/runtimevar"
+	"os"
 )
 
 // type WebhookConfig is a struct containing configuration information for a `webhookd` instance.
@@ -48,33 +45,21 @@ type WebhookWebhooksConfig struct {
 
 // NewConfigFromURI returns a new `WebhookConfig` instance derived from 'uri' which is expected to take the form of
 // a valid `gocloud.dev/runtimevar` URI. The value of that URI is expected to be a JSON-encoded `WebhookConfig` string.
-func NewConfigFromURI(ctx context.Context, uri string) (*WebhookConfig, error) {
+func NewConfig(configFile string) (*WebhookConfig, error) {
 
-	str_cfg, err := runtimevar.StringVar(ctx, uri)
-
+	// Read the file from the provided path
+	f, err := os.ReadFile(configFile)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to open config URI, %w", err)
+		log.Fatalf("error reading config file: %v", err)
 	}
 
-	cfg_fh := strings.NewReader(str_cfg)
-
-	return NewConfigFromReader(ctx, cfg_fh)
-}
-
-// NewConfigFromReader returns a new `WebhookConfig` instance derived from 'r'.The body of 'r' is expected to be a JSON-encoded `WebhookConfig`
-// string.
-func NewConfigFromReader(ctx context.Context, r io.Reader) (*WebhookConfig, error) {
-
-	var cfg *WebhookConfig
-
-	dec := json.NewDecoder(r)
-	err := dec.Decode(&cfg)
-
-	if err != nil {
-		return nil, fmt.Errorf("Failed to decode config, %w", err)
+	// Unmarshal the YAML data into the Config struct
+	var config *WebhookConfig
+	if err := yaml.Unmarshal(f, &config); err != nil {
+		log.Fatal(err)
 	}
 
-	return cfg, nil
+	return config, nil
 }
 
 // GetReceiverConfigByName returns the receiver URI for 'name'.

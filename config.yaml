@@ -1,0 +1,16 @@
+daemon: "http://localhost:8080"
+receivers:
+  insecure: "insecure://"
+transformations:
+  pass: "pass://"
+  chicken: "chicken://zxx"
+  clucking: "chicken://eng?clucking=true"
+dispatchers:
+  log: "log://"
+webhooks:
+  - endpoint: "/api"
+    receiver: "insecure"
+    transformations:
+      - "pass"
+    dispatchers:
+      - "log"

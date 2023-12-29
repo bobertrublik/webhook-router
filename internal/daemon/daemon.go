@@ -6,10 +6,7 @@ import (
 	"fmt"
 	"github.com/bobertrublik/webhook-router/internal/logger"
 	"github.com/bobertrublik/webhook-router/internal/webhookd"
-	"log"
 	"net/http"
-	"net/url"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -25,68 +22,21 @@ import (
 type WebhookDaemon struct {
 	// webhooks is a dictionary of URIs and their corresponding `webhookd.WebhookHandler` instances.
 	webhooks map[string]webhookd.WebhookHandler
-	// AllowDebug is a boolean flag to enable debugging reporting in webhook responses.
-	AllowDebug bool
-
-	// logger is a pointer to an instance of `log.Logger`. It is used throughout the WebhookDaemon for logging various information and errors.
-	logger *log.Logger
 }
 
 // NewWebhookDaemonFromConfig() returns a new `WebhookDaemon` derived from configuration data in 'cfg'.
 func NewWebhookDaemonFromConfig(ctx context.Context, cfg *config.WebhookConfig) (*WebhookDaemon, error) {
 
-	d, err := NewWebhookDaemon(ctx, cfg.Daemon)
-
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create new webhookd daemon, %w", err)
-	}
-
-	err = d.AddWebhooksFromConfig(ctx, cfg)
-
-	if err != nil {
-		return nil, fmt.Errorf("Failed to add webhooks to daemon, %w", err)
-	}
-
-	return d, nil
-}
-
-// NewWebhookDaemon() returns a `WebhookDaemon` instance derived from 'uri' which is expected to take
-// the form of any valid `aaronland/go-http-server.Server` URI with the following parameters:
-// * `?allow_debug=` An optional boolean flag to enable debugging output in webhook responses.
-func NewWebhookDaemon(ctx context.Context, uri string) (*WebhookDaemon, error) {
-
-	u, err := url.Parse(uri)
-
-	if err != nil {
-		return nil, fmt.Errorf("Failed to parse daemon URI, %w", err)
-	}
-
-	q := u.Query()
-
-	strDebug := q.Get("allow_debug")
-
-	allowDebug := false
-
-	if strDebug != "" {
-
-		v, err := strconv.ParseBool(strDebug)
-
-		if err != nil {
-			return nil, fmt.Errorf("Invalid ?allowDebug parameter, %w", err)
-		}
-
-		allowDebug = v
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create new server instance, %w", err)
-	}
-
 	webhooks := make(map[string]webhookd.WebhookHandler)
 
 	d := WebhookDaemon{
-		webhooks:   webhooks,
-		AllowDebug: allowDebug,
+		webhooks: webhooks,
+	}
+
+	err := d.AddWebhooksFromConfig(ctx, cfg)
+
+	if err != nil {
+		return nil, fmt.Errorf("Failed to add webhooks to daemon, %w", err)
 	}
 
 	return &d, nil
@@ -350,25 +300,12 @@ func (d *WebhookDaemon) ProcessRequest(w http.ResponseWriter, r *http.Request) e
 	w.Header().Set("X-Webhookd-Time-To-Dispatch", fmt.Sprintf("%v", ttd))
 	w.Header().Set("X-Webhookd-Time-To-Process", fmt.Sprintf("%v", t2))
 
-	if d.AllowDebug {
-
-		query := r.URL.Query()
-		debug := query.Get("debug")
-
-		if debug != "" {
-			w.Header().Set("Content-Type", "text/plain")
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Write(body)
-		}
-	}
-
 	return nil
 
 }
 
 // Start() causes 'd' to listen for, and process, requests.
 func (d *WebhookDaemon) Start(w http.ResponseWriter, r *http.Request) error {
-	d.logger = log.Default()
 	err := d.ProcessRequest(w, r)
 	if err != nil {
 		return err

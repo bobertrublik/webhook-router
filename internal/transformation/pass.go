@@ -8,7 +8,7 @@ import (
 func init() {
 
 	ctx := context.Background()
-	err := RegisterTransformation(ctx, "null", NewNullTransformation)
+	err := RegisterTransformation(ctx, "pass", NewNullTransformation)
 
 	if err != nil {
 		panic(err)
@@ -23,7 +23,7 @@ type NullTransformation struct {
 
 // NewInsecureTransformation returns a new `NullTransformation` instance configured by 'uri' in the form of:
 //
-//	null://
+//	pass://
 func NewNullTransformation(ctx context.Context, uri string) (webhookd.WebhookTransformation, error) {
 
 	p := NullTransformation{}
