@@ -3,6 +3,7 @@ package router
 import (
 	"fmt"
 	"github.com/bobertrublik/webhook-router/internal/daemon"
+	"github.com/bobertrublik/webhook-router/internal/logger"
 	"net/http"
 
 	"github.com/auth0/go-jwt-middleware/v2"
@@ -25,6 +26,7 @@ func New(webhookDaemon *daemon.WebhookDaemon) *http.ServeMux {
 	// This route is only accessible if the user has a valid access_token.
 	router.Handle("/api", middleware.EnsureValidToken()(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			logger.Log.Info("Retrieved new request")
 			err := webhookDaemon.Start(w, r)
 			if err != nil {
 				fmt.Println(err)

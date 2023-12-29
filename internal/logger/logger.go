@@ -1,10 +1,14 @@
 package logger
 
-import "log/slog"
+import (
+	"log/slog"
+	"os"
+)
 
 var Log *slog.Logger
 
 func init() {
 	// Initialize the Log variable
-	Log = slog.Default()
+	jsonHandler := slog.NewJSONHandler(os.Stdout, nil) // 👈
+	Log = slog.New(jsonHandler)
 }

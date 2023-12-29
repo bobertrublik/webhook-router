@@ -17,7 +17,7 @@
 	    "endpoint": "/api",
 	    "receiver": "insecure",
 	    "transformations": [ "null" ],
-	    "dispatchers": [ "log" ]
+	    "dispatchers": [ "null" ]
 	}
     ]
 }
