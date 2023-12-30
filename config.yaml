@@ -13,4 +13,3 @@ webhooks:
       - "pass"
     dispatchers:
       - "echo"
-      - "echo2"
