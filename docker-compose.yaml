@@ -1,0 +1,26 @@
+version: '3'
+services:
+  webhook-router:
+    image: webhook-router:v0.0.1
+    container_name: webhook-router
+    volumes:
+      - ./config.yaml:/etc/config/config.yaml
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+  webhook-echo:
+    image: mendhak/http-https-echo:31
+    container_name: webhook-echo
+    environment:
+      - HTTP_PORT=8888
+      - HTTPS_PORT=9999
+      - PROMETHEUS_ENABLED=true
+      - PROMETHEUS_METRICS_PATH=/metrics
+      - PROMETHEUS_WITH_PATH=false
+      - PROMETHEUS_WITH_METHOD=true
+      - PROMETHEUS_WITH_STATUS=true
+      - PROMETHEUS_METRIC_TYPE=summary
+    ports:
+      - "8888:8888"
+      - "8443:9999"

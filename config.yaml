@@ -3,14 +3,14 @@ receivers:
   insecure: "insecure://"
 transformations:
   pass: "pass://"
-  chicken: "chicken://zxx"
-  clucking: "chicken://eng?clucking=true"
 dispatchers:
   log: "log://"
+  echo: "echo://webhook-echo:8888"
 webhooks:
   - endpoint: "/api"
     receiver: "insecure"
     transformations:
       - "pass"
     dispatchers:
-      - "log"
+      - "echo"
+      - "echo2"
