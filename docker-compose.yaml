@@ -5,6 +5,7 @@ services:
     container_name: webhook-router
     volumes:
       - ./config.yaml:/etc/config/config.yaml
+      - ./schemas:/etc/schemas
     env_file:
       - .env
     ports:
