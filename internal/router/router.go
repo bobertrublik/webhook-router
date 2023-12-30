@@ -27,7 +27,7 @@ func New(webhookDaemon *daemon.WebhookDaemon) *http.ServeMux {
 	router.Handle("/api", middleware.EnsureValidToken()(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			logger.Log.Info("Retrieved new request")
-			err := webhookDaemon.Start(w, r)
+			err := webhookDaemon.ProcessRequest(w, r)
 			if err != nil {
 				fmt.Println(err)
 			}

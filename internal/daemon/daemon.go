@@ -303,12 +303,3 @@ func (d *WebhookDaemon) ProcessRequest(w http.ResponseWriter, r *http.Request) e
 	return nil
 
 }
-
-// Start() causes 'd' to listen for, and process, requests.
-func (d *WebhookDaemon) Start(w http.ResponseWriter, r *http.Request) error {
-	err := d.ProcessRequest(w, r)
-	if err != nil {
-		return err
-	}
-	return nil
-}
