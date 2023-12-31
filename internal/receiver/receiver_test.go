@@ -9,7 +9,7 @@ func TestRegisterReceiver(t *testing.T) {
 
 	ctx := context.Background()
 
-	err := RegisterReceiver(ctx, "insecure", NewInsecureReceiver)
+	err := RegisterReceiver(ctx, "insecure", NewPassThroughReceiver)
 
 	if err == nil {
 		t.Fatalf("Expected NewNullReceiver to be registered already")

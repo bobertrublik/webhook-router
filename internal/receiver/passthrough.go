@@ -10,7 +10,7 @@ import (
 func init() {
 
 	ctx := context.Background()
-	err := RegisterReceiver(ctx, "insecure", NewInsecureReceiver)
+	err := RegisterReceiver(ctx, "passthrough", NewPassThroughReceiver)
 
 	if err != nil {
 		panic(err)
@@ -18,21 +18,21 @@ func init() {
 }
 
 // LogReceiver implements the `webhookd.WebhookReceiver` interface for receiving webhook messages in an insecure fashion.
-type InsecureReceiver struct {
+type PassThroughReceiver struct {
 	webhookd.WebhookReceiver
 }
 
-// NewInsecureReceiver returns a new `InsecureReceiver` instance configured by 'uri' in the form of:
+// NewPassThroughReceiver returns a new `PassThroughReceiver` instance configured by 'uri' in the form of:
 //
 //	insecure://
-func NewInsecureReceiver(ctx context.Context, uri string) (webhookd.WebhookReceiver, error) {
+func NewPassThroughReceiver(ctx context.Context, uri string) (webhookd.WebhookReceiver, error) {
 
-	wh := InsecureReceiver{}
+	wh := PassThroughReceiver{}
 	return wh, nil
 }
 
 // Receive returns the body of the message in 'req'. It does not check its provenance or validate the message body in any way. You should not use this in production.
-func (wh InsecureReceiver) Receive(ctx context.Context, req *http.Request) ([]byte, *webhookd.WebhookError) {
+func (wh PassThroughReceiver) Receive(ctx context.Context, req *http.Request) ([]byte, *webhookd.WebhookError) {
 
 	select {
 	case <-ctx.Done():

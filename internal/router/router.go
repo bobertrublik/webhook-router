@@ -14,16 +14,19 @@ func New(webhookDaemon *daemon.WebhookDaemon) *http.ServeMux {
 	router := http.NewServeMux()
 
 	// This route is always accessible.
-	router.Handle("/api/public", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.Handle("/echo", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		logger.Log.Info("Webhook request received on path /echo")
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"message":"Hello from a public endpoint! You don't need to be authenticated to see this."}`))
+		err := webhookDaemon.ProcessRequest(w, r)
+		if err != nil {
+			fmt.Println(err)
+		}
 	}))
 
 	// This route is only accessible if the user has a valid access_token.
 	router.Handle("/api", middleware.EnsureValidToken()(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			logger.Log.Info("Retrieved new request")
+			logger.Log.Info("Webhook request received on path /api")
 			err := webhookDaemon.ProcessRequest(w, r)
 			if err != nil {
 				fmt.Println(err)

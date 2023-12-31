@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestNullReceiver(t *testing.T) {
+func TestPassThroughReceiver(t *testing.T) {
 
 	ctx := context.Background()
 

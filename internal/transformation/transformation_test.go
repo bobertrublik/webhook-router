@@ -12,7 +12,7 @@ func TestRegisterTransformation(t *testing.T) {
 	err := RegisterTransformation(ctx, "chicken", NewChickenTransformation)
 
 	if err == nil {
-		t.Fatalf("Expected NewNullTransformation to be registered already")
+		t.Fatalf("Expected NewPassThroughTransformation to be registered already")
 	}
 }
 

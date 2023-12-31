@@ -1,15 +1,21 @@
 daemon: "http://localhost:8080"
 receivers:
-  insecure: "insecure://"
+  passthrough: "passthrough://"
 transformations:
-  pass: "pass://"
+  passthrough: "passthrough://"
 dispatchers:
   log: "log://"
   echo: "echo://webhook-echo:8888"
 webhooks:
-  - endpoint: "/api"
-    receiver: "insecure"
+  - endpoint: "/echo"
+    receiver: "passthrough"
     transformations:
-      - "pass"
+      - "passthrough"
     dispatchers:
       - "log"
+  - endpoint: "/api"
+    receiver: "passthrough"
+    transformations:
+      - "passthrough"
+    dispatchers:
+      - "echo"
