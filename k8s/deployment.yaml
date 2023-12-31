@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webhook-router
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webhook-router
+  template:
+    metadata:
+      labels:
+        app: webhook-router
+    spec:
+      containers:
+        - name: webhook-router
+          image: webhook-router:dev
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: config
+              mountPath: /etc/config
+          envFrom:
+            - secretRef:
+                name: webhook-router-auth0
+      volumes:
+        - name: config
+          secret:
+            secretName: webhook-router-config

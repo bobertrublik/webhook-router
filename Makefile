@@ -1,23 +1,38 @@
-include .env
-export
-GOMOD=vendor
+# ---------------------------------------------------------------------
+# -- Which container tool to use
+# ---------------------------------------------------------------------
+CONTAINER_TOOL ?= docker
+# ---------------------------------------------------------------------
+# -- Image URL to use all building/pushing image targets
+# ---------------------------------------------------------------------
+IMAGE_TAG ?= webhook-router:dev
+# ---------------------------------------------------------------------
+# -- It's required when you want to use k3s and nerdctl
+# -- $ export CONTAINER_TOOL_NAMESPACE_ARG="--namespace k8s.io"
+# ---------------------------------------------------------------------
+CONTAINER_TOOL_NAMESPACE_ARG ?=
+# -- Set additional argumets to container tool
+# -- To use, set an environment variable:
+# -- $ export CONTAINER_TOOL_ARGS="--build-arg GOARCH=arm64 --platform=linux/arm64"
+# ---------------------------------------------------------------------
+CONTAINER_TOOL_ARGS ?=
 
-bump-version:
-	perl -i -p -e 's/github.com\/whosonfirst\/go-webhookd\/$(PREVIOUS)/github.com\/whosonfirst\/go-webhookd\/$(NEW)/g' go.mod
-	perl -i -p -e 's/github.com\/whosonfirst\/go-webhookd\/$(PREVIOUS)/github.com\/whosonfirst\/go-webhookd\/$(NEW)/g' README.md
-	find . -name '*.go' | xargs perl -i -p -e 's/github.com\/whosonfirst\/go-webhookd\/$(PREVIOUS)/github.com\/whosonfirst\/go-webhookd\/$(NEW)/g'
+k3d-create:
+	k3d cluster create myk3s
+	kubectl get pod
 
-cli:
-	go build -mod $(GOMOD) -ldflags="-s -w" -o bin/webhookd cmd/webhookd/main.go
-	go build -mod $(GOMOD) -ldflags="-s -w" -o bin/webhookd-generate-hook cmd/webhookd-generate-hook/main.go
-	go build -mod $(GOMOD) -ldflags="-s -w" -o bin/webhookd-flatten-config cmd/webhookd-flatten-config/main.go
-	go build -mod $(GOMOD) -ldflags="-s -w" -o bin/webhookd-inflate-config cmd/webhookd-inflate-config/main.go
+k3d-delete:
+	k3d cluster delete myk3s
 
-local-scan:
-	/usr/local/bin/sonar-scanner/bin/sonar-scanner -Dsonar.projectKey=go-webhookd -Dsonar.sources=. -Dsonar.host.url=http://localhost:9000 -Dsonar.login=$(TOKEN)
+webhook-router-deploy:
+	kubectl apply -f k8s/deployment.yaml
+	kubectl apply -f k8s/secret-config.yaml
+	kubectl apply -f k8s/secret-env.yaml
+	kubectl apply -f k8s/service.yaml
 
-godoc:
-	godoc -http=:6060
+build: ## Build a container
+	$(CONTAINER_TOOL) build ${CONTAINER_TOOL_ARGS} -t ${IMAGE_TAG} . ${CONTAINER_TOOL_NAMESPACE_ARG}
+	$(CONTAINER_TOOL) save ${CONTAINER_TOOL_NAMESPACE_ARG} ${IMAGE_TAG} -o webhook-router-image.tar
 
-run:
-	go run ./cmd/webhookd/main.go -config 'config.yaml'
+k3d_image: build ## rebuild the docker images and upload into your k3d cluster
+	@k3d image import webhook-router-image.tar -c myk3s

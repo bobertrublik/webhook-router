@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: webhook-router
+spec:
+  selector:
+    app: webhook-router
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
