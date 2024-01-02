@@ -1,12 +1,13 @@
 package dispatcher
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/bobertrublik/webhook-router/internal/webhookd"
-	"github.com/sfomuseum/go-slack/writer"
-
 	"io"
+	"net/http"
+
 	"net/url"
 )
 
@@ -20,16 +21,9 @@ func init() {
 	}
 }
 
-// For backwards compatibility
-
-type SlackcatConfig struct {
-	WebhookUrl string `json:"webhook_url"`
-	Channel    string `json:"channel"`
-}
-
 type SlackDispatcher struct {
 	webhookd.WebhookDispatcher
-	writer io.Writer
+	incomingWebhook string
 }
 
 func NewSlackDispatcher(ctx context.Context, uri string) (webhookd.WebhookDispatcher, error) {
@@ -42,17 +36,8 @@ func NewSlackDispatcher(ctx context.Context, uri string) (webhookd.WebhookDispat
 
 	q := u.Query()
 
-	wh_uri := q.Get("webhook")
-	wh_channel := q.Get("channel")
-
-	wr, err := writer.NewSlackWriter(wh_uri, wh_channel)
-
-	if err != nil {
-		return nil, err
-	}
-
 	slack := SlackDispatcher{
-		writer: wr,
+		incomingWebhook: q.Get("webhook"),
 	}
 
 	return &slack, nil
@@ -67,8 +52,20 @@ func (sl *SlackDispatcher) Dispatch(ctx context.Context, body []byte) *webhookd.
 		// pass
 	}
 
-	_, err := sl.writer.Write(body)
+	responseBody := bytes.NewBuffer(body)
+	// Create a new HTTP request
+	resp, err := http.Post(sl.incomingWebhook, "application/json", responseBody)
 
+	if err != nil {
+		code := 999
+		message := err.Error()
+
+		err := &webhookd.WebhookError{Code: code, Message: message}
+		return err
+	}
+	defer resp.Body.Close()
+	//Read the response body
+	body, err = io.ReadAll(resp.Body)
 	if err != nil {
 		code := 999
 		message := err.Error()

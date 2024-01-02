@@ -6,4 +6,4 @@ config*.json
 vendor
 /.env
 /k8s/secret-*.yaml
-/my-image.tar
+/webhook-router-image.tar

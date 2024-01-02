@@ -25,10 +25,11 @@ k3d-delete:
 	k3d cluster delete myk3s
 
 webhook-router-deploy:
-	kubectl apply -f k8s/deployment.yaml
 	kubectl apply -f k8s/secret-config.yaml
 	kubectl apply -f k8s/secret-env.yaml
 	kubectl apply -f k8s/service.yaml
+	kubectl delete -f k8s/deployment.yaml
+	kubectl apply -f k8s/deployment.yaml
 
 build: ## Build a container
 	$(CONTAINER_TOOL) build ${CONTAINER_TOOL_ARGS} -t ${IMAGE_TAG} . ${CONTAINER_TOOL_NAMESPACE_ARG}

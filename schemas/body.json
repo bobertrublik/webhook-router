@@ -1,0 +1,57 @@
+{
+  "blocks": [
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": "Service Health Alert",
+        "emoji": true
+      }
+    },
+    {
+      "type": "context",
+      "elements": [
+        {
+          "type": "mrkdwn",
+          "text": "*Rule*: @{triggerBody()?['data']?['essentials']?['alertRule']}\n*Severity*: @{triggerBody()?['data']?['essentials']?['severity']}\n*Service*: @{triggerBody()?['data']?['alertContext']?['properties']?['service']}\n*Region*: @{triggerBody()?['data']?['alertContext']?['properties']?['region']}\n*Incident Type*: @{triggerBody()?['data']?['alertContext']?['properties']?['incidentType']}"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": "*Start*: @{triggerBody()?['data']?['alertContext']?['properties']?['impactStartTime']}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Stage*: @{triggerBody()?['data']?['alertContext']?['properties']?['stage']}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*End*: @{triggerBody()?['data']?['alertContext']?['properties']?['impactMitigationTime']}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Status*: @{triggerBody()?['data']?['alertContext']?['status']}"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*Description*: @{triggerBody()?['data']?['essentials']?['description']}"
+      }
+
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*Communication*: @{replace(replace(triggerBody()?['data']?['alertContext']?['properties']?['communication'], '<p>', ''), '</p>', '')}"
+      }
+    }
+  ]
+}

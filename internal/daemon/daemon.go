@@ -245,7 +245,6 @@ func (d *WebhookDaemon) ProcessRequest(w http.ResponseWriter, r *http.Request) e
 		go func(idx int, di webhookd.WebhookDispatcher, body []byte) {
 
 			defer wg.Done()
-
 			err = di.Dispatch(ctx, body)
 
 			if err != nil {
