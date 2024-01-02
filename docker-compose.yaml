@@ -1,7 +1,7 @@
 version: '3'
 services:
   webhook-router:
-    image: webhook-router:v0.0.1
+    image: webhook-router:dev
     container_name: webhook-router
     volumes:
       - ./config.yaml:/etc/config/config.yaml

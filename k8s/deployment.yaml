@@ -21,7 +21,7 @@ spec:
             - name: config
               mountPath: /etc/config
           envFrom:
-            - secretRef:
+            - configMapRef:
                 name: webhook-router-auth0
       volumes:
         - name: config

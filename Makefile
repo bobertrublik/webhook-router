@@ -25,8 +25,8 @@ k3d-delete:
 	k3d cluster delete myk3s
 
 webhook-router-deploy:
+	kubectl apply -f k8s/configmap-auth0.yaml
 	kubectl apply -f k8s/secret-config.yaml
-	kubectl apply -f k8s/secret-env.yaml
 	kubectl apply -f k8s/service.yaml
 	kubectl delete -f k8s/deployment.yaml
 	kubectl apply -f k8s/deployment.yaml

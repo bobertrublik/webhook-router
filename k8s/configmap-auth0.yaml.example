@@ -1,17 +1,10 @@
 apiVersion: v1
-kind: Secret
-type: Opaque
+kind: ConfigMap
 metadata:
   name: webhook-router-env
-stringData:
+data:
   # Our Auth0 application's Audience.
   AUTH0_AUDIENCE: '{audience}'
   # The URL of our Auth0 Tenant Domain.
   # If you're using a Custom Domain, be sure to set this to that value instead.
   AUTH0_DOMAIN: '{domain}'
-  # Our Auth0 application's Client ID.
-  AUTH0_CLIENT_ID: '{client id}'
-  # Our Auth0 application's Client Secret.
-  AUTH0_CLIENT_SECRET: '{client secret}'
-
-  

@@ -11,9 +11,6 @@ import (
 
 // type WebhookConfig is a struct containing configuration information for a `webhookd` instance.
 type WebhookConfig struct {
-	// Daemon is a valid `aaronland/go-http-server` URI. This determines how the `webhookd` server will be
-	// instantiated and listen for requests.
-	Daemon string `json:"daemon"`
 	// Receivers is a dictionary of available receivers where the key is a unique label used to identify the
 	// receiver (in `WebhookWebhooksConfig`) and the value is a URI used to instantiate the reciever.
 	Receivers map[string]string `json:"receivers"`

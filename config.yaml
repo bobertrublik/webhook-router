@@ -1,4 +1,3 @@
-daemon: "http://localhost:8080"
 receivers:
   passthrough: "passthrough://"
 transformations:
@@ -12,10 +11,11 @@ webhooks:
     transformations:
       - "passthrough"
     dispatchers:
-      - "log"
+      - "echo"
   - endpoint: "/api"
     receiver: "passthrough"
     transformations:
       - "passthrough"
     dispatchers:
-      - "echo"
+      - "log"
+
